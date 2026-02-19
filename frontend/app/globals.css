@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* Prevent scroll bounce on mobile during swipe */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+/* Smooth font rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keyboard key styling */
+kbd {
+  font-family: inherit;
+  font-size: 0.85em;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  border: 1px solid #bbada0;
+}
