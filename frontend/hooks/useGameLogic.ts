@@ -7,7 +7,7 @@
 import { useCallback, useEffect } from "react";
 import { useGameStore, Grid, SwapSelection } from "@/store/gameStore";
 import { useAuth, useUser } from "@clerk/nextjs";
-import { submitScore, saveGame } from "@/lib/api";
+import { submitScore, saveGame, claimChallengeApi } from "@/lib/api";
 
 // ── Utility Functions ──────────────────────────────────────────────────────────
 
@@ -22,16 +22,17 @@ function spawnTile(grid: Grid): Grid {
     return newGrid;
 }
 
-/** Slide and merge a single row to the left. Returns { row, gained }. */
-function slideRow(row: number[]): { row: number[]; gained: number } {
-    // Filter out zeros
+/** Slide and merge a single row to the left. Returns { row, gained, mergedIndices }. */
+function slideRow(row: number[]): { row: number[]; gained: number; mergedIndices: number[] } {
     const tiles = row.filter((v) => v !== 0);
     let gained = 0;
     const merged: number[] = [];
+    const mergedIndices: number[] = [];
     let i = 0;
     while (i < tiles.length) {
         if (i + 1 < tiles.length && tiles[i] === tiles[i + 1]) {
             const val = tiles[i] * 2;
+            mergedIndices.push(merged.length); // output index of the merged tile
             merged.push(val);
             gained += val;
             i += 2;
@@ -40,10 +41,10 @@ function slideRow(row: number[]): { row: number[]; gained: number } {
             i++;
         }
     }
-    // Pad with zeros
     while (merged.length < 4) merged.push(0);
-    return { row: merged, gained };
+    return { row: merged, gained, mergedIndices };
 }
+
 
 /** Transpose a 4x4 grid (rows become columns). */
 function transpose(grid: Grid): Grid {
@@ -79,36 +80,44 @@ function getHighestTile(grid: Grid): number {
 
 // ── Move Functions ─────────────────────────────────────────────────────────────
 
-function moveLeft(grid: Grid): { grid: Grid; gained: number } {
+function moveLeft(grid: Grid): { grid: Grid; gained: number; mergedCells: Set<string> } {
     let gained = 0;
-    const newGrid = grid.map((row) => {
+    const mergedCells = new Set<string>();
+    const newGrid = grid.map((row, r) => {
         const result = slideRow(row);
         gained += result.gained;
+        result.mergedIndices.forEach((c) => mergedCells.add(`${r}-${c}`));
         return result.row;
     });
-    return { grid: newGrid, gained };
+    return { grid: newGrid, gained, mergedCells };
 }
 
-function moveRight(grid: Grid): { grid: Grid; gained: number } {
+function moveRight(grid: Grid): { grid: Grid; gained: number; mergedCells: Set<string> } {
     let gained = 0;
-    const newGrid = grid.map((row) => {
+    const mergedCells = new Set<string>();
+    const newGrid = grid.map((row, r) => {
         const result = slideRow([...row].reverse());
         gained += result.gained;
+        // mirror indices back since we reversed
+        result.mergedIndices.forEach((c) => mergedCells.add(`${r}-${3 - c}`));
         return result.row.reverse();
     });
-    return { grid: newGrid, gained };
+    return { grid: newGrid, gained, mergedCells };
 }
 
-function moveUp(grid: Grid): { grid: Grid; gained: number } {
+function moveUp(grid: Grid): { grid: Grid; gained: number; mergedCells: Set<string> } {
     const transposed = transpose(grid);
-    const { grid: moved, gained } = moveLeft(transposed);
-    return { grid: transpose(moved), gained };
+    const { grid: moved, gained, mergedCells: mc } = moveLeft(transposed);
+    // After transpose, row→col and col→row
+    const mergedCells = new Set<string>([...mc].map((k) => { const [r, c] = k.split("-"); return `${c}-${r}`; }));
+    return { grid: transpose(moved), gained, mergedCells };
 }
 
-function moveDown(grid: Grid): { grid: Grid; gained: number } {
+function moveDown(grid: Grid): { grid: Grid; gained: number; mergedCells: Set<string> } {
     const transposed = transpose(grid);
-    const { grid: moved, gained } = moveRight(transposed);
-    return { grid: transpose(moved), gained };
+    const { grid: moved, gained, mergedCells: mc } = moveRight(transposed);
+    const mergedCells = new Set<string>([...mc].map((k) => { const [r, c] = k.split("-"); return `${c}-${r}`; }));
+    return { grid: transpose(moved), gained, mergedCells };
 }
 
 /** Check if a move actually changed the grid. */
@@ -139,24 +148,25 @@ export function useGameLogic() {
             if (store.won && !store.keepPlaying) return;
 
             const { grid, score } = store;
-
-            // Save history before move (for undo)
             store.pushHistory(grid, score);
 
-            let result: { grid: Grid; gained: number };
+            let result: { grid: Grid; gained: number; mergedCells: Set<string> };
             if (direction === "left") result = moveLeft(grid);
             else if (direction === "right") result = moveRight(grid);
             else if (direction === "up") result = moveUp(grid);
             else result = moveDown(grid);
 
-            // If nothing changed, don't spawn a new tile
             if (gridsEqual(grid, result.grid)) {
-                store.popHistory(); // revert history push
+                store.popHistory();
                 return;
             }
 
             const newScore = score + result.gained;
             const newGrid = spawnTile(result.grid);
+
+            // Track merged cells for animation, clear after 300ms
+            store.setMergedCells(result.mergedCells);
+            setTimeout(() => store.setMergedCells(new Set()), 300);
 
             store.setGrid(newGrid);
             store.setScore(newScore);
@@ -164,6 +174,13 @@ export function useGameLogic() {
             // Check win
             if (!store.won && hasWon(newGrid)) {
                 store.setWon(true);
+            }
+
+            // Check 16384 challenge — first time this tile appears globally
+            const highestTile = getHighestTile(newGrid);
+            if (highestTile >= 16384 && !store.challengeWon) {
+                store.setChallengeWon(true);
+                claimChallenge();
             }
 
             // Check game over
@@ -249,6 +266,19 @@ export function useGameLogic() {
         [store]
     );
 
+
+    /** Claim the ₹100 prize when current user is first to hit 16384. */
+    const claimChallenge = useCallback(async () => {
+        try {
+            const token = await getToken();
+            if (!token) return;
+            const username = user?.username || user?.firstName || "Anonymous";
+            await claimChallengeApi(username ?? "Anonymous", token);
+        } catch (err) {
+            console.error("Failed to claim challenge:", err);
+        }
+    }, [getToken, user]);
+
     /** Save game state to backend (cloud sync). */
     const cloudSave = useCallback(async () => {
         try {
@@ -291,6 +321,8 @@ export function useGameLogic() {
         deleteCount: store.deleteCount,
         powerUpMode: store.powerUpMode,
         swapSelection: store.swapSelection,
+        mergedCells: store.mergedCells,
+        challengeWon: store.challengeWon,
         initGame,
         applyMove,
         undo,
@@ -300,3 +332,4 @@ export function useGameLogic() {
         setKeepPlaying: store.setKeepPlaying,
     };
 }
+

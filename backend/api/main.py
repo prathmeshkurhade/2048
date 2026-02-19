@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import get_engine, Base
-from .routers import scores, game
+from .routers import scores, game, challenge
 from .config import settings
 
 
@@ -40,6 +40,7 @@ app.add_middleware(
 # ── Routers ────────────────────────────────────────────────────────────────────
 app.include_router(scores.router)
 app.include_router(game.router)
+app.include_router(challenge.router)
 
 
 # ── Health Check ───────────────────────────────────────────────────────────────

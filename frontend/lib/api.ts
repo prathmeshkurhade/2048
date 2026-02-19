@@ -70,3 +70,25 @@ export async function healthCheck() {
     const { data } = await api.get("/health");
     return data;
 }
+
+// ── Challenge ──────────────────────────────────────────────────────────────────
+
+export interface ChallengeStatus {
+    claimed: boolean;
+    winner_username: string | null;
+}
+
+export async function fetchChallenge(): Promise<ChallengeStatus> {
+    const { data } = await api.get<ChallengeStatus>("/api/challenge");
+    return data;
+}
+
+export async function claimChallengeApi(username: string, token: string): Promise<ChallengeStatus> {
+    const { data } = await api.post<ChallengeStatus>(
+        "/api/challenge/claim",
+        { username },
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return data;
+}
+

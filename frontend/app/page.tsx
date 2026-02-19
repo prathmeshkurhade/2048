@@ -12,6 +12,7 @@ import Board from "@/components/Board";
 import PowerUps from "@/components/PowerUps";
 import GameOver from "@/components/GameOver";
 import WinBanner from "@/components/WinBanner";
+import ChallengeBanner from "@/components/ChallengeBanner";
 
 /**
  * Synchronously check localStorage for a saved game with tiles on the board.
@@ -57,6 +58,7 @@ export default function HomePage() {
     gameOver, won, keepPlaying,
     undoCount, swapCount, deleteCount,
     powerUpMode, swapSelection,
+    mergedCells, challengeWon,
     initGame, applyMove, undo,
     handleTileClick, setPowerUpMode, setKeepPlaying,
   } = useGameLogic();
@@ -84,6 +86,11 @@ export default function HomePage() {
     <main className="flex flex-col items-center min-h-screen py-8 px-4 gap-6">
       <Header score={score} bestScore={bestScore} onNewGame={initGame} />
 
+      {/* ₹100 Challenge Banner */}
+      <div className="w-full max-w-[480px]">
+        <ChallengeBanner justWon={challengeWon} />
+      </div>
+
       {/* Instructions */}
       <p className="text-[#bbada0] text-sm text-center max-w-[480px]">
         Use <kbd className="bg-[#eee4da] px-1 rounded">arrow keys</kbd> or swipe to move tiles.
@@ -96,6 +103,7 @@ export default function HomePage() {
           grid={grid}
           powerUpMode={powerUpMode}
           swapSelection={swapSelection}
+          mergedCells={mergedCells}
           onTileClick={handleTileClick}
           onSwipe={applyMove}
         />

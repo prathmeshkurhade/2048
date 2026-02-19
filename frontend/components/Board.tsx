@@ -12,13 +12,14 @@ interface BoardProps {
     grid: Grid;
     powerUpMode: PowerUpMode;
     swapSelection: SwapSelection | null;
+    mergedCells: Set<string>;
     onTileClick: (row: number, col: number) => void;
     onSwipe: (direction: "left" | "right" | "up" | "down") => void;
 }
 
-export default function Board({ grid, powerUpMode, swapSelection, onTileClick, onSwipe }: BoardProps) {
+export default function Board({ grid, powerUpMode, swapSelection, mergedCells, onTileClick, onSwipe }: BoardProps) {
     const touchStart = useRef<{ x: number; y: number } | null>(null);
-    const MIN_SWIPE = 30; // px threshold
+    const MIN_SWIPE = 30;
 
     const handleTouchStart = (e: React.TouchEvent) => {
         const t = e.touches[0];
@@ -73,6 +74,7 @@ export default function Board({ grid, powerUpMode, swapSelection, onTileClick, o
                                     row={r}
                                     col={c}
                                     isSelected={isSelected(r, c)}
+                                    isMerged={mergedCells.has(`${r}-${c}`)}
                                     onClick={isClickable ? () => onTileClick(r, c) : undefined}
                                 />
                             </div>

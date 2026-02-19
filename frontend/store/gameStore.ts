@@ -20,6 +20,13 @@ export interface SwapSelection {
 }
 
 interface GameStore {
+    // Cells that just merged this move — used for bounce animation
+    mergedCells: Set<string>;
+    setMergedCells: (cells: Set<string>) => void;
+
+    // Global 16384 challenge
+    challengeWon: boolean;
+    setChallengeWon: (v: boolean) => void;
     // Board state
     grid: Grid;
     score: number;
@@ -60,6 +67,10 @@ const INITIAL_GRID: Grid = Array(4).fill(null).map(() => Array(4).fill(0));
 export const useGameStore = create<GameStore>()(
     persist(
         (set, get) => ({
+            mergedCells: new Set<string>(),
+            setMergedCells: (cells: Set<string>) => set({ mergedCells: cells }),
+            challengeWon: false,
+            setChallengeWon: (v: boolean) => set({ challengeWon: v }),
             grid: INITIAL_GRID,
             score: 0,
             bestScore: 0,
@@ -118,6 +129,7 @@ export const useGameStore = create<GameStore>()(
                     powerUpMode: "none",
                     swapSelection: null,
                     history: [],
+                    mergedCells: new Set<string>(),
                 }),
         }),
         {
