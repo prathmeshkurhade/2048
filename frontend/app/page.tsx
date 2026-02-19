@@ -58,7 +58,7 @@ export default function HomePage() {
     gameOver, won, keepPlaying,
     undoCount, swapCount, deleteCount,
     powerUpMode, swapSelection,
-    mergedCells, challengeWon,
+    mergedCells, challengeWon, lastMoveDirection,
     initGame, applyMove, undo,
     handleTileClick, setPowerUpMode, setKeepPlaying,
   } = useGameLogic();
@@ -104,6 +104,7 @@ export default function HomePage() {
           powerUpMode={powerUpMode}
           swapSelection={swapSelection}
           mergedCells={mergedCells}
+          lastMoveDirection={lastMoveDirection}
           onTileClick={handleTileClick}
           onSwipe={applyMove}
         />

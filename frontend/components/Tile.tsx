@@ -4,8 +4,7 @@
  */
 "use client";
 
-import { motion, useAnimation } from "framer-motion";
-import { useEffect } from "react";
+import { motion } from "framer-motion";
 
 interface TileProps {
     value: number;
@@ -38,25 +37,23 @@ function getTileStyle(value: number) {
 
 export default function Tile({ value, row, col, isSelected, isMerged, onClick }: TileProps) {
     const style = getTileStyle(value);
-    const controls = useAnimation();
 
-    // Pop animation when a merge happens on this cell
-    useEffect(() => {
-        if (isMerged && value !== 0) {
-            controls.start({
-                scale: [1, 1.25, 1],
-                transition: { duration: 0.2, ease: "easeOut" },
-            });
-        }
-    }, [isMerged, value, controls]);
+    // Merge bounce uses tween (supports 3+ keyframes), normal uses spring
+    const animateProps = isMerged && value !== 0
+        ? { scale: [1, 1.25, 1], opacity: 1 }
+        : { scale: 1, opacity: 1 };
+
+    const transitionProps = isMerged && value !== 0
+        ? { duration: 0.2, ease: "easeOut" as const }
+        : { type: "spring" as const, stiffness: 300, damping: 25 };
 
     return (
         <motion.div
             key={`${row}-${col}-${value}`}
             layoutId={`tile-${row}-${col}`}
             initial={{ scale: value !== 0 ? 0 : 1, opacity: value !== 0 ? 0 : 1 }}
-            animate={controls}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            animate={animateProps}
+            transition={transitionProps}
             onClick={onClick}
             className={`
         flex items-center justify-center rounded-md font-bold select-none

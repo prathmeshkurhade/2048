@@ -168,6 +168,10 @@ export function useGameLogic() {
             store.setMergedCells(result.mergedCells);
             setTimeout(() => store.setMergedCells(new Set()), 300);
 
+            // Track move direction for slide animation, clear after 150ms
+            store.setLastMoveDirection(direction);
+            setTimeout(() => store.setLastMoveDirection(null), 150);
+
             store.setGrid(newGrid);
             store.setScore(newScore);
 
@@ -323,6 +327,7 @@ export function useGameLogic() {
         swapSelection: store.swapSelection,
         mergedCells: store.mergedCells,
         challengeWon: store.challengeWon,
+        lastMoveDirection: store.lastMoveDirection,
         initGame,
         applyMove,
         undo,

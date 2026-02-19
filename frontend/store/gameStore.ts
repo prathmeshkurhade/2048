@@ -27,6 +27,11 @@ interface GameStore {
     // Global 16384 challenge
     challengeWon: boolean;
     setChallengeWon: (v: boolean) => void;
+
+    // Directional slide animation
+    lastMoveDirection: "left" | "right" | "up" | "down" | null;
+    setLastMoveDirection: (dir: "left" | "right" | "up" | "down" | null) => void;
+
     // Board state
     grid: Grid;
     score: number;
@@ -71,6 +76,8 @@ export const useGameStore = create<GameStore>()(
             setMergedCells: (cells: Set<string>) => set({ mergedCells: cells }),
             challengeWon: false,
             setChallengeWon: (v: boolean) => set({ challengeWon: v }),
+            lastMoveDirection: null,
+            setLastMoveDirection: (dir) => set({ lastMoveDirection: dir }),
             grid: INITIAL_GRID,
             score: 0,
             bestScore: 0,
